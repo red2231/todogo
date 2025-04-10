@@ -15,7 +15,7 @@ func insert(t Task) {
 db , err:= sql.Open("mysql", "root:erick@unix(/var/run/mysqld/mysqld.sock)/golang")
 if err !=nil{
 	log.Fatal("Erro na conexão!")
-	return
+	
 }
 defer db.Close()
 _, erro := db.Exec("insert into task(scheduled, name, description) values(?, ?, ?)", t.Scheduled, t.Name, t.Description)
@@ -32,6 +32,7 @@ go func(){
 	channel<-normalizetask(*r)
 }()
 task := <-channel
+
 go insert(task)
 }
 
@@ -64,8 +65,8 @@ return task
 }
 func main(){
 	go http.HandleFunc("POST /task", post)
+	
 	 http.ListenAndServe(":5000", nil)
-
 }
 type Task struct{
 	 Scheduled time.Time `json:"scheduled"`
