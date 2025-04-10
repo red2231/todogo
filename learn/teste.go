@@ -7,9 +7,11 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/gorilla/mux"
 )
 func insert(t Task) {
 db , err:= sql.Open("mysql", "root:erick@unix(/var/run/mysqld/mysqld.sock)/golang")
@@ -49,7 +51,7 @@ go func(){
 	}
 	ch<-val
 }()
-values:=<-ch
+values := <-ch
 var task Task
 err := json.Unmarshal(values, &task)
 if err !=nil{
@@ -63,10 +65,39 @@ if err !=nil{
 task.Scheduled = timer
 return task
 }
-func main(){
-	go http.HandleFunc("POST /task", post)
+func GET(w http.ResponseWriter, r *http.Request){
+		vars:= mux.Vars(r)
+		id, _:=strconv.Atoi(vars["id"])
+		db , err:= sql.Open("mysql", "root:erick@unix(/var/run/mysqld/mysqld.sock)/golang?parseTime=true")
+if err !=nil{
+	log.Fatal("Erro na conexão!")
 	
-	 http.ListenAndServe(":5000", nil)
+}
+defer db.Close()
+var task Task
+sqll:="select scheduled, name, description from task where id =? limit 1"
+values:=db.QueryRow(sqll, id)
+
+
+err=values.Scan(&task.Scheduled, &task.Name, &task.Description)
+if err !=nil{
+	http.Error(w, "nao encontrado", http.StatusNotFound)
+	log.Print("nao encontrado")
+	return
+}
+value, err:= json.Marshal(task)
+if err!=nil{
+	log.Fatal("err")
+}
+ io.WriteString(w, string(value))
+ 
+}
+	
+func main(){
+	r := mux.NewRouter()
+	 r.HandleFunc("/task", post).Methods("POST")
+ r.HandleFunc("/task/{id}", GET ).Methods("GET")
+	 http.ListenAndServe(":5000", r)
 }
 type Task struct{
 	 Scheduled time.Time `json:"scheduled"`
