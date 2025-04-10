@@ -20,8 +20,8 @@ func handleGET(w http.ResponseWriter, r *http.Request){
 
 }
 func main(){
-http.HandleFunc("POST /task", handleGET)
+ http.HandleFunc("POST /task", handleGET)
 fmt.Print("comecou")
-http.ListenAndServe(":8000", nil)
+go http.ListenAndServe(":8000", nil)
 
 }
