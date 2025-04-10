@@ -20,34 +20,51 @@ if err !=nil{
 defer db.Close()
 _, erro := db.Exec("insert into task(scheduled, name, description) values(?, ?, ?)", t.Scheduled, t.Name, t.Description)
 if erro!=nil{
-	erro.Error()
+	log.Fatal(erro.Error())
 }
 
 
 }
 func post(w http.ResponseWriter, r *http.Request ){
-values, err := io.ReadAll(r.Body)
-if err!=nil{
-	log.Fatal("Erro!")
-	return
+
+channel := make(chan Task)
+go func(){
+	channel<-normalizetask(*r)
+}()
+task := <-channel
+go insert(task)
 }
+
+
+func normalizetask(i http.Request) Task{
+ch := make(chan []byte)
+er := make(chan error)
+
+go func(){
+	val, err:=io.ReadAll(i.Body)
+	if err!=nil{
+		er<-err
+		log.Fatal("erro")
+	}
+	ch<-val
+}()
+values:=<-ch
 var task Task
-err = json.Unmarshal(values, &task)
+err := json.Unmarshal(values, &task)
 if err !=nil{
 	log.Fatal("Erro")
-	return
+	
 }
 timer, err := time.Parse("2006-01-02 15:04:05 -0700 MST", task.Scheduled.String())
 if err !=nil{
 	fmt.Print(err.Error())
 }
 task.Scheduled = timer
-fmt.Print(task.Scheduled.String())
-go insert(task)
+return task
 }
 func main(){
-	http.HandleFunc("POST /task", post)
-	http.ListenAndServe(":5000", nil)
+	go http.HandleFunc("POST /task", post)
+	 http.ListenAndServe(":5000", nil)
 
 }
 type Task struct{
